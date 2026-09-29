@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Citizen Dashboard - Road Hazard Reporting & Tracking System</title>
+    
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/css/dashboard.css" />
+    <link rel="stylesheet" href="/css/responsive.css" />
+
+    <!-- Immediate Auth Guard: Prevents flash of unauthorized dashboard content -->
+    <style id="page-auth-shield">
+      html, body { visibility: hidden !important; opacity: 0 !important; }
+    </style>
+    <script>
+      (function() {
+        try {
+          var raw = localStorage.getItem('RH_CURRENT_USER');
+          if (!raw) {
+            window.location.replace('/login.html?redirect=' + encodeURIComponent(window.location.pathname + window.location.search));
+            return;
+          }
+        } catch (e) {
+          window.location.replace('/login.html');
+          return;
+        }
+        function revealPage() {
+          var shield = document.getElementById('page-auth-shield');
+          if (shield) shield.remove();
+          document.documentElement.style.visibility = 'visible';
+          if (document.body) {
+            document.body.style.visibility = 'visible';
+            document.body.style.opacity = '1';
+          }
+        }
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', revealPage);
+        } else {
+          revealPage();
+        }
+      })();
+    </script>
+
+    <script src="/js/theme.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  </head>
+  <body>
+    <!-- Navigation -->
+    <header class="navbar">
+      <div class="container nav-container">
+        <a href="/index.html" class="brand-logo">
+          <div class="brand-icon">⚠️</div>
+          <div>RoadHazard<span style="color: var(--color-accent);">Tracker</span></div>
+        </a>
+
+        <button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+
+        <nav class="nav-menu">
+          <a href="/dashboard.html" class="nav-link active">Dashboard</a>
+          <a href="/reports.html" class="nav-link">All Reports</a>
+          <a href="/report.html" class="nav-link">Report Hazard</a>
+          <a href="/my-reports.html" class="nav-link">My Reports</a>
+        </nav>
+
+        <div class="nav-actions" id="nav-auth-container">
+          <!-- Populated by auth.js -->
+        </div>
+      </div>
+    </header>
+
+    <!-- Page Header -->
+    <section class="page-header">
+      <div class="container page-header-content">
+        <div>
+          <h1 class="page-title" id="user-greeting">Welcome back!</h1>
+          <p class="page-subtitle">Track your reported infrastructure issues and community road safety progress.</p>
+        </div>
+        <div style="display: flex; gap: 0.75rem;">
+          <a href="/report.html" class="btn btn-accent btn-lg">
+            ⚠️ Report New Hazard
+          </a>
+          <a href="/my-reports.html" class="btn btn-outline">
+            View All My Reports
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Dashboard Main Content -->
+    <main class="container" style="padding-bottom: 4rem;">
+      <!-- Stats Summary Cards -->
+      <section class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-blue">📊</div>
+          <div class="stat-info">
+            <div class="stat-value" id="stat-total">0</div>
+            <div class="stat-label">Total Submitted</div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-slate">📝</div>
+          <div class="stat-info">
+            <div class="stat-value" id="stat-reported">0</div>
+            <div class="stat-label">Pending Verification</div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-amber">🛠️</div>
+          <div class="stat-info">
+            <div class="stat-value" id="stat-in-progress">0</div>
+            <div class="stat-label">In Progress</div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-green">✅</div>
+          <div class="stat-info">
+            <div class="stat-value" id="stat-resolved">0</div>
+            <div class="stat-label">Resolved</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Recent Reports Section -->
+      <section class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Your Recent Reports</h2>
+            <p class="card-subtitle">Showing latest submissions and their current administrative status</p>
+          </div>
+          <a href="/my-reports.html" class="btn btn-outline-primary btn-sm">
+            Manage All
+          </a>
+        </div>
+
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Hazard Type</th>
+                <th>Location</th>
+                <th>Severity</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="recent-reports-body">
+              <tr>
+                <td colspan="7" style="text-align: center; padding: 2rem;">Loading your reports...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div id="recent-empty" class="empty-state" style="display: none; border: none; margin-top: 1rem;">
+          <div class="empty-icon">🛣️</div>
+          <h3 class="empty-title">No hazards reported yet</h3>
+          <p class="empty-desc">Spot a dangerous pothole, broken signal, or open manhole? Submit a report now to alert the responsible authority.</p>
+          <a href="/report.html" class="btn btn-primary">Report a Hazard</a>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="container footer-bottom" style="border: none; padding-top: 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+        <div>&copy; 2026 Road Hazard Reporting &amp; Civic Tracker &bull; Public Infrastructure Safety Portal</div>
+        <div><span style="color: #cbd5e1;"><strong style="color: #fbbf24;">Emergency Assistance:</strong> Dial <strong>333</strong> (Citizen Services) &bull; <strong>999</strong> (Accidents &amp; Emergency)</span></div>
+      </div>
+    </footer>
+
+    <script src="/js/supabase.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/dashboard.js"></script>
+  </body>
+</html>

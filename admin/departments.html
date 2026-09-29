@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Department Mappings - Road Hazard Admin</title>
+    
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/css/dashboard.css" />
+    <link rel="stylesheet" href="/css/responsive.css" />
+
+    <!-- Strict Head-Level Admin Guard: Completely prevents flash of unauthorized admin content -->
+    <style id="admin-auth-shield">
+      html, body { visibility: hidden !important; opacity: 0 !important; background-color: #0f172a !important; }
+    </style>
+    <script>
+      (function() {
+        try {
+          var raw = localStorage.getItem('RH_CURRENT_USER');
+          var user = raw ? JSON.parse(raw) : null;
+          if (!user || user.role !== 'admin') {
+            var target = encodeURIComponent(window.location.pathname + window.location.search);
+            if (!user) {
+              window.location.replace('/login.html?admin=true&redirect=' + target);
+            } else {
+              window.location.replace('/dashboard.html?denied=admin');
+            }
+            return;
+          }
+        } catch (e) {
+          window.location.replace('/login.html?admin=true');
+          return;
+        }
+        function revealAdminPage() {
+          var shield = document.getElementById('admin-auth-shield');
+          if (shield) shield.remove();
+          document.documentElement.style.visibility = 'visible';
+          if (document.body) {
+            document.body.style.visibility = 'visible';
+            document.body.style.opacity = '1';
+            document.body.style.backgroundColor = '';
+          }
+        }
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', revealAdminPage);
+        } else {
+          revealAdminPage();
+        }
+      })();
+    </script>
+
+    <script src="/js/theme.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  </head>
+  <body>
+    <!-- Navigation -->
+    <header class="navbar">
+      <div class="container nav-container">
+        <a href="/index.html" class="brand-logo">
+          <div class="brand-icon">🛡️</div>
+          <div>RoadHazard<span style="color: var(--color-accent);">Admin</span></div>
+          <span class="brand-badge" style="background: #fee2e2; color: #b91c1c; border-color: #fca5a5;">ADMIN</span>
+        </a>
+
+        <button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+
+        <nav class="nav-menu">
+          <a href="/admin/dashboard.html" class="nav-link">Admin Dashboard</a>
+          <a href="/admin/reports.html" class="nav-link">Manage Reports</a>
+          <a href="/admin/departments.html" class="nav-link active">Departments & Mappings</a>
+          <a href="/reports.html" class="nav-link">Public Registry</a>
+        </nav>
+
+        <div class="nav-actions" id="nav-auth-container">
+          <!-- Populated by auth.js -->
+        </div>
+      </div>
+    </header>
+
+    <!-- Page Header -->
+    <section class="page-header">
+      <div class="container page-header-content">
+        <div>
+          <h1 class="page-title">Civic Departments & Auto-Routing Rules</h1>
+          <p class="page-subtitle">Configure the intelligent mapping between Area + Hazard Type &rarr; Responsible Authority.</p>
+        </div>
+        <div style="font-size: 0.85rem; color: var(--text-muted); background: #f1f5f9; padding: 0.5rem 1rem; border-radius: var(--radius-md);">
+          Prototype Routing Rules Engine
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Content -->
+    <main class="container" style="padding-bottom: 5rem;">
+      <!-- Section 1: Area + Hazard Type Routing Mappings -->
+      <section class="card" style="margin-bottom: 2.5rem;">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">1. Area & Hazard Type &rarr; Department Mappings</h2>
+            <p class="card-subtitle">These mappings power the real-time department suggestions during citizen hazard reporting.</p>
+          </div>
+        </div>
+
+        <!-- Add New Mapping Form -->
+        <form id="new-mapping-form" style="background: #f8fafc; border: 1px dashed var(--border-color); border-radius: var(--radius-md); padding: 1.25rem; margin-bottom: 1.5rem;">
+          <h4 style="font-size: 0.9rem; margin-bottom: 0.75rem; color: var(--color-primary);">+ Add / Update Routing Rule</h4>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) auto; gap: 1rem; align-items: flex-end;">
+            <div>
+              <label class="form-label" style="font-size: 0.775rem;">Area / Region</label>
+              <select id="mapping-area" class="form-select" required>
+                <option value="">-- Choose Area --</option>
+                <option value="Mirpur (DNCC)">Mirpur (DNCC)</option>
+                <option value="Dhanmondi (DSCC)">Dhanmondi (DSCC)</option>
+                <option value="Uttara (DNCC)">Uttara (DNCC)</option>
+                <option value="Gulshan & Banani (DNCC)">Gulshan & Banani (DNCC)</option>
+                <option value="Old Dhaka (DSCC)">Old Dhaka (DSCC)</option>
+                <option value="Mohammadpur (DNCC)">Mohammadpur (DNCC)</option>
+                <option value="Motijheel (DSCC)">Motijheel (DSCC)</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="form-label" style="font-size: 0.775rem;">Hazard Category</label>
+              <select id="mapping-hazard-type" class="form-select" required>
+                <option value="">-- Choose Hazard --</option>
+                <option value="Broken Road / Pothole">Broken Road / Pothole</option>
+                <option value="Open Manhole">Open Manhole</option>
+                <option value="Waterlogging">Waterlogging</option>
+                <option value="Broken Traffic Signal">Broken Traffic Signal</option>
+                <option value="Damaged Street Light">Damaged Street Light</option>
+                <option value="Fallen Tree / Obstacle">Fallen Tree / Obstacle</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="form-label" style="font-size: 0.775rem;">Responsible Authority</label>
+              <select id="mapping-department-id" class="form-select" required>
+                <!-- Populated via admin.js -->
+              </select>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="height: 40px;">
+              Save Rule
+            </button>
+          </div>
+        </form>
+
+        <!-- Current Mappings Table -->
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Area / District</th>
+                <th>Hazard Category</th>
+                <th>Assigned Suggestion Department</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="admin-mappings-table-body">
+              <tr>
+                <td colspan="4" style="text-align: center; padding: 2rem;">Loading mapping rules...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Section 2: Department Management -->
+      <section class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">2. Civic Departments Registry</h2>
+            <p class="card-subtitle">Manage registered public authorities (generic prototype entities for project evaluation).</p>
+          </div>
+        </div>
+
+        <!-- Add Department Form -->
+        <form id="new-dept-form" style="background: #f8fafc; border: 1px dashed var(--border-color); border-radius: var(--radius-md); padding: 1.25rem; margin-bottom: 1.5rem;">
+          <h4 style="font-size: 0.9rem; margin-bottom: 0.75rem; color: var(--color-primary);">+ Register New Prototype Department</h4>
+          <div style="display: grid; grid-template-columns: 1fr 1.5fr auto; gap: 1rem; align-items: flex-end;">
+            <div>
+              <label class="form-label" style="font-size: 0.775rem;">Department Name</label>
+              <input type="text" id="new-dept-name" class="form-control" placeholder="e.g. Bridges & Flyovers Division" required />
+            </div>
+            <div>
+              <label class="form-label" style="font-size: 0.775rem;">Jurisdiction / Scope Description</label>
+              <input type="text" id="new-dept-desc" class="form-control" placeholder="e.g. Oversees structural concrete bridge defects..." />
+            </div>
+            <button type="submit" class="btn btn-primary" style="height: 40px;">
+              Add Department
+            </button>
+          </div>
+        </form>
+
+        <!-- Departments Table -->
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Department Name</th>
+                <th>Description & Scope</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="admin-depts-table-body">
+              <tr>
+                <td colspan="3" style="text-align: center; padding: 2rem;">Loading departments...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="container footer-bottom" style="border: none; padding-top: 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+        <div>&copy; 2026 Road Hazard Reporting &amp; Civic Tracker &bull; Municipal Authority Admin Console</div>
+        <div><span style="color: #cbd5e1;"><strong style="color: #fbbf24;">Emergency Assistance:</strong> Dial <strong>333</strong> (Citizen Services) &bull; <strong>999</strong> (Accidents &amp; Emergency)</span></div>
+      </div>
+    </footer>
+
+    <script src="/js/supabase.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/admin.js"></script>
+  </body>
+</html>

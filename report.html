@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Report a Hazard - Road Hazard Reporting & Tracking System</title>
+    
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/css/dashboard.css" />
+    <link rel="stylesheet" href="/css/responsive.css" />
+
+    <script src="/js/theme.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  </head>
+  <body>
+    <!-- Navigation -->
+    <header class="navbar">
+      <div class="container nav-container">
+        <a href="/index.html" class="brand-logo">
+          <div class="brand-icon">⚠️</div>
+          <div>RoadHazard<span style="color: var(--color-accent);">Tracker</span></div>
+        </a>
+
+        <button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+
+        <nav class="nav-menu">
+          <a href="/dashboard.html" class="nav-link">Dashboard</a>
+          <a href="/reports.html" class="nav-link">All Reports</a>
+          <a href="/report.html" class="nav-link active">Report Hazard</a>
+          <a href="/my-reports.html" class="nav-link">My Reports</a>
+        </nav>
+
+        <div class="nav-actions" id="nav-auth-container">
+          <!-- Populated by auth.js -->
+        </div>
+      </div>
+    </header>
+
+    <!-- Page Header -->
+    <section class="page-header">
+      <div class="container page-header-content">
+        <div>
+          <h1 class="page-title">Submit Road Hazard Report</h1>
+          <p class="page-subtitle">Help improve public safety by reporting road damages, open manholes, or street light failures.</p>
+        </div>
+        <a href="/reports.html" class="btn btn-outline">
+          &larr; View Existing Reports
+        </a>
+      </div>
+    </section>
+
+    <!-- Form Container -->
+    <main class="container" style="max-width: 800px; padding-bottom: 5rem;">
+
+      <!-- AUTHENTICATION REQUIRED GATE (Shown if citizen is not logged in) -->
+      <div id="auth-gate-card" class="card" style="display: none; text-align: center; padding: 3.5rem 2rem; border-top: 4px solid var(--color-primary); box-shadow: var(--shadow-lg);">
+        <div style="width: 72px; height: 72px; border-radius: 50%; background: var(--color-primary-light); color: var(--color-primary); font-size: 2.25rem; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem; box-shadow: 0 4px 14px rgba(15, 118, 110, 0.18);">
+          🛡️
+        </div>
+        <span class="badge badge-sev-high" style="margin-bottom: 0.75rem; font-size: 0.775rem; text-transform: uppercase; letter-spacing: 0.05em;">
+          🔒 Citizen Authentication Mandatory
+        </span>
+        <h2 style="font-size: 1.75rem; font-weight: 800; color: var(--text-main); margin-bottom: 0.75rem; letter-spacing: -0.02em;">
+          রিপোর্ট করার পূর্বে লগইন বা রেজিস্ট্রেশন আবশ্যক
+        </h2>
+        <p style="font-size: 0.95rem; color: var(--text-muted); max-width: 580px; margin: 0 auto 1.75rem; line-height: 1.6;">
+          পাবলিক ও স্প্যাম রিপোর্ট রোধে এবং ঢাকা সিটি করপোরেশন (DNCC/DSCC), ওয়াসা ও ট্রাফিক পুলিশের দ্রুত পদক্ষেপ নিশ্চিত করতে রাস্তা বা ড্রেনেজের রিপোর্ট করার পূর্বে <strong>লগইন</strong> অথবা <strong>নতুন অ্যাকাউন্ট রেজিস্টার</strong> করা বাধ্যতামূলক।
+        </p>
+
+        <div style="display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 2rem;">
+          <a href="/login.html?redirect=%2Freport.html" class="btn btn-primary btn-lg" style="min-width: 190px;">
+            🔐 Login to Submit Report
+          </a>
+          <a href="/register.html?redirect=%2Freport.html" class="btn btn-outline btn-lg" style="min-width: 190px;">
+            📝 Register Citizen Account
+          </a>
+        </div>
+
+        <div style="margin-top: 2.25rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.25rem; text-align: left; font-size: 0.825rem; color: var(--text-muted); line-height: 1.5;">
+          <div><strong>🚫 Prevent Fake Reports:</strong> নিশ্চিত জবাবদিহিতা নিশ্চিত করতে প্রতিটি রিপোর্টের সাথে নাগরিক প্রোফাইল লিংক থাকে।</div>
+          <div><strong>🔔 Live Progress Tracking:</strong> সিটি করপোরেশন বা ট্রাফিক পুলিশ কাজ শুরু করলে লাইভ স্ট্যাটাস জানতে পারবেন।</div>
+          <div><strong>📈 Civic Contribution:</strong> আপনার এলাকার নিরাপদ চলাচলে আপনার অবদান 'My Reports' এ সংরক্ষিত থাকবে।</div>
+        </div>
+      </div>
+
+      <!-- HAZARD REPORT FORM CARD (Visible only to authenticated users) -->
+      <div id="report-form-card" class="card" style="display: none;">
+        <!-- Authenticated Citizen Banner -->
+        <div class="user-report-banner" style="background: var(--color-primary-light); border: 1px solid var(--border-focus); border-radius: var(--radius-md); padding: 0.85rem 1.25rem; margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <div class="user-avatar-dot" id="auth-citizen-avatar" style="width: 34px; height: 34px; font-size: 0.95rem;">U</div>
+            <div>
+              <div style="font-size: 0.875rem; font-weight: 700; color: var(--text-main);">
+                Reporting as: <span id="auth-citizen-name">Verified Citizen</span>
+              </div>
+              <div style="font-size: 0.775rem; color: var(--text-muted);" id="auth-citizen-email">
+                citizen@example.com
+              </div>
+            </div>
+          </div>
+          <span class="badge badge-status-verified" style="font-size: 0.75rem; padding: 4px 8px;">
+            ✓ Verified Citizen Account
+          </span>
+        </div>
+
+        <form id="report-form">
+          <!-- Area and Hazard Type Row -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;">
+            <div class="form-group">
+              <label for="hazard-area" class="form-label">
+                <span>District / Area</span>
+                <span style="color: #ef4444;">*</span>
+              </label>
+              <select id="hazard-area" class="form-select" required>
+                <option value="">-- Choose Monitored Area --</option>
+                <option value="Mirpur (DNCC)">Mirpur (DNCC)</option>
+                <option value="Dhanmondi (DSCC)">Dhanmondi (DSCC)</option>
+                <option value="Uttara (DNCC)">Uttara (DNCC)</option>
+                <option value="Gulshan & Banani (DNCC)">Gulshan & Banani (DNCC)</option>
+                <option value="Old Dhaka (DSCC)">Old Dhaka (DSCC)</option>
+                <option value="Mohammadpur (DNCC)">Mohammadpur (DNCC)</option>
+                <option value="Motijheel (DSCC)">Motijheel (DSCC)</option>
+              </select>
+              <span class="form-hint">Select administrative territory (DNCC / DSCC)</span>
+            </div>
+
+            <div class="form-group">
+              <label for="hazard-type" class="form-label">
+                <span>Hazard Category</span>
+                <span style="color: #ef4444;">*</span>
+              </label>
+              <select id="hazard-type" class="form-select" required>
+                <option value="">-- Choose Hazard Category --</option>
+                <option value="Broken Road / Pothole">Broken Road / Pothole (ভাঙা রাস্তা / খানাখন্দ)</option>
+                <option value="Open Manhole">Open Manhole (খোলা ম্যানহোল)</option>
+                <option value="Waterlogging">Waterlogging / Drainage (জলাবদ্ধতা ও ড্রেনেজ)</option>
+                <option value="Broken Traffic Signal">Broken Traffic Signal (নষ্ট ট্রাফিক সিগন্যাল)</option>
+                <option value="Damaged Street Light">Damaged Street Light / Overhead Wires (নষ্ট সড়ক বাতি ও তার)</option>
+                <option value="Fallen Tree / Obstacle">Fallen Tree / Road Blockage (গাছ ভেঙে পড়া / প্রতিবন্ধকতা)</option>
+                <option value="Other Safety Hazard">Other Safety Hazard (অন্যান্য ঝুঁকি)</option>
+              </select>
+              <span class="form-hint">Type of infrastructure defect</span>
+            </div>
+          </div>
+
+          <!-- Dynamic Department Suggestion Box -->
+          <div id="department-suggestion-box" class="suggestion-box">
+            <div class="suggestion-icon">🏢</div>
+            <div class="suggestion-text">
+              <div class="suggestion-title">Routing Engine Proposal</div>
+              <div id="suggested-dept-name" class="suggestion-name">Select area & hazard type</div>
+              <div id="suggested-dept-desc" class="suggestion-desc">
+                The system will automatically match and suggest the responsible civic department (e.g. DNCC/DSCC Road Dept, Dhaka WASA, DMP Traffic, DESCO/DPDC).
+              </div>
+            </div>
+            <!-- Hidden input to store suggested department ID -->
+            <input type="hidden" id="suggested-dept-id" value="" />
+          </div>
+
+          <!-- Location Details -->
+          <div style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 1.25rem;">
+            <div class="form-group">
+              <label for="road-name" class="form-label">
+                <span>Road Name / Street Location</span>
+                <span style="color: #ef4444;">*</span>
+              </label>
+              <input 
+                type="text" 
+                id="road-name" 
+                class="form-control" 
+                placeholder="e.g. Begum Rokeya Sarani, Kazipara" 
+                required 
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="landmark" class="form-label">
+                <span>Nearby Landmark</span>
+                <span class="optional">(Optional)</span>
+              </label>
+              <input 
+                type="text" 
+                id="landmark" 
+                class="form-control" 
+                placeholder="e.g. Metro Rail Pillar #248 / Near Bus Stand" 
+              />
+            </div>
+          </div>
+
+          <!-- Severity Selection -->
+          <div class="form-group">
+            <label class="form-label">Hazard Severity Assessment</label>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 0.25rem;">
+              <label style="border: 1px solid #99f6e4; background: #f0fdfa; border-radius: var(--radius-md); padding: 0.75rem; display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                <input type="radio" name="severity" value="Low" />
+                <div>
+                  <strong style="color: var(--severity-low); font-size: 0.9rem;">Low Severity</strong>
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">Minor inconvenience, traffic flowing</div>
+                </div>
+              </label>
+
+              <label style="border: 1px solid #fef08a; background: #fefce8; border-radius: var(--radius-md); padding: 0.75rem; display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                <input type="radio" name="severity" value="Medium" checked />
+                <div>
+                  <strong style="color: #a16207; font-size: 0.9rem;">Medium Severity</strong>
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">Causes vehicle slowdown, moderate risk</div>
+                </div>
+              </label>
+
+              <label style="border: 1px solid #fecdd3; background: #fff1f2; border-radius: var(--radius-md); padding: 0.75rem; display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                <input type="radio" name="severity" value="High" />
+                <div>
+                  <strong style="color: var(--severity-high); font-size: 0.9rem;">High Severity</strong>
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">Immediate danger, accident or injury hazard</div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Detailed Description -->
+          <div class="form-group">
+            <label for="description" class="form-label">
+              <span>Detailed Problem Description</span>
+              <span style="color: #ef4444;">*</span>
+            </label>
+            <textarea 
+              id="description" 
+              class="form-textarea" 
+              placeholder="Describe the condition, approximate dimensions (e.g. 2 ft wide hole), whether water is accumulated, and how it impacts traffic or pedestrians..." 
+              required
+            ></textarea>
+          </div>
+
+          <!-- Image Upload Dropzone -->
+          <div class="form-group">
+            <label class="form-label">
+              <span>Hazard Photo Evidence</span>
+              <span class="optional">(Optional - Upload to Supabase Storage)</span>
+            </label>
+            
+            <input type="file" id="hazard-image-file" accept="image/*" style="display: none;" />
+            
+            <div class="dropzone" id="image-dropzone">
+              <div class="dropzone-icon">📸</div>
+              <div class="dropzone-text">Click to upload photo or drag & drop</div>
+              <div class="dropzone-subtext">JPG, PNG, or WebP (Max 5MB)</div>
+            </div>
+
+            <div id="image-preview-container" class="preview-container" style="display: none;">
+              <img id="preview-img" class="preview-img" src="" alt="Selected Preview" />
+              <button type="button" id="remove-image-btn" class="preview-remove-btn" title="Remove image">✕</button>
+            </div>
+          </div>
+
+          <!-- Submission Controls -->
+          <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
+            <a href="/dashboard.html" class="btn btn-outline">Cancel</a>
+            <button type="submit" class="btn btn-accent btn-lg" style="min-width: 220px;">
+              🚀 Submit Hazard Report
+            </button>
+          </div>
+        </form>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="container footer-bottom" style="border: none; padding-top: 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+        <div>&copy; 2026 Road Hazard Reporting &amp; Civic Tracker &bull; Public Infrastructure Safety Portal</div>
+        <div><span style="color: #cbd5e1;"><strong style="color: #fbbf24;">Emergency Assistance:</strong> Dial <strong>333</strong> (Citizen Services) &bull; <strong>999</strong> (Accidents &amp; Emergency)</span></div>
+      </div>
+    </footer>
+
+    <script src="/js/supabase.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/report.js"></script>
+  </body>
+</html>

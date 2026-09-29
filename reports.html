@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>All Reports - Road Hazard Reporting & Tracking System</title>
+    
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/css/dashboard.css" />
+    <link rel="stylesheet" href="/css/responsive.css" />
+
+    <script src="/js/theme.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  </head>
+  <body>
+    <!-- Navigation -->
+    <header class="navbar">
+      <div class="container nav-container">
+        <a href="/index.html" class="brand-logo">
+          <div class="brand-icon">⚠️</div>
+          <div>RoadHazard<span style="color: var(--color-accent);">Tracker</span></div>
+        </a>
+
+        <button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+
+        <nav class="nav-menu">
+          <a href="/index.html" class="nav-link">Home</a>
+          <a href="/reports.html" class="nav-link active">All Reports</a>
+          <a href="/report.html" class="nav-link">Report Hazard</a>
+          <a href="/my-reports.html" class="nav-link">My Reports</a>
+        </nav>
+
+        <div class="nav-actions" id="nav-auth-container">
+          <!-- Populated by auth.js -->
+        </div>
+      </div>
+    </header>
+
+    <!-- Page Header -->
+    <section class="page-header">
+      <div class="container page-header-content">
+        <div>
+          <h1 class="page-title">Public Road Hazard Registry</h1>
+          <p class="page-subtitle">Search, filter, and inspect reported municipal road defects and civic resolution stages.</p>
+        </div>
+        <a href="/report.html" class="btn btn-accent">
+          ⚠️ Report a Hazard
+        </a>
+      </div>
+    </section>
+
+    <!-- Main Container -->
+    <main class="container" style="padding-bottom: 5rem;">
+      <!-- Search & Filter Toolbar -->
+      <section class="toolbar">
+        <div class="toolbar-search">
+          <span class="toolbar-search-icon">🔍</span>
+          <input 
+            type="text" 
+            id="search-input" 
+            class="form-control" 
+            placeholder="Search by road name, area, landmark, or hazard type..." 
+          />
+        </div>
+
+        <div class="toolbar-filters">
+          <div>
+            <label class="form-label" style="font-size: 0.775rem;">Hazard Type</label>
+            <select id="filter-type" class="form-select">
+              <option value="all">All Categories</option>
+              <option value="Broken Road / Pothole">Broken Road / Pothole</option>
+              <option value="Open Manhole">Open Manhole</option>
+              <option value="Waterlogging">Waterlogging</option>
+              <option value="Broken Traffic Signal">Broken Traffic Signal</option>
+              <option value="Damaged Street Light">Damaged Street Light</option>
+              <option value="Fallen Tree / Obstacle">Fallen Tree / Obstacle</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="form-label" style="font-size: 0.775rem;">Area / Region</label>
+            <select id="filter-area" class="form-select">
+              <option value="all">All Areas</option>
+              <option value="Mirpur (DNCC)">Mirpur (DNCC)</option>
+              <option value="Dhanmondi (DSCC)">Dhanmondi (DSCC)</option>
+              <option value="Uttara (DNCC)">Uttara (DNCC)</option>
+              <option value="Gulshan & Banani (DNCC)">Gulshan & Banani (DNCC)</option>
+              <option value="Old Dhaka (DSCC)">Old Dhaka (DSCC)</option>
+              <option value="Mohammadpur (DNCC)">Mohammadpur (DNCC)</option>
+              <option value="Motijheel (DSCC)">Motijheel (DSCC)</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="form-label" style="font-size: 0.775rem;">Severity</label>
+            <select id="filter-severity" class="form-select">
+              <option value="all">All Severities</option>
+              <option value="Low">Low</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="form-label" style="font-size: 0.775rem;">Status</label>
+            <select id="filter-status" class="form-select">
+              <option value="all">All Statuses</option>
+              <option value="Reported">Reported</option>
+              <option value="Verified">Verified</option>
+              <option value="Assigned">Assigned</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Resolved">Resolved</option>
+              <option value="Rejected">Rejected</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="toolbar-actions">
+          <div id="reports-count-display">Loading reports...</div>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <button id="reset-filters-btn" class="btn btn-outline btn-sm">
+              Reset Filters
+            </button>
+            <div style="border-left: 1px solid var(--border-color); height: 20px; margin: 0 4px;"></div>
+            <button id="view-cards-btn" class="btn btn-primary btn-sm" title="Cards View">🗂️ Grid</button>
+            <button id="view-table-btn" class="btn btn-outline btn-sm" title="Table View">📊 Table</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Grid Cards View Container -->
+      <section class="reports-grid" id="reports-cards-container">
+        <!-- Injected via reports.js -->
+      </section>
+
+      <!-- Table View Container -->
+      <section class="table-responsive" id="reports-table-container" style="display: none;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Hazard Category</th>
+              <th>Location</th>
+              <th>Severity</th>
+              <th>Status</th>
+              <th>Responsible Dept</th>
+              <th>Reported Date</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="reports-table-body">
+            <!-- Injected via reports.js -->
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Empty State -->
+      <div id="empty-state" class="empty-state" style="display: none;">
+        <div class="empty-icon">🔍</div>
+        <h3 class="empty-title">No Matching Hazard Reports</h3>
+        <p class="empty-desc">Try clearing or adjusting your search keywords and dropdown filters.</p>
+        <button id="clear-filters-action" class="btn btn-primary" onclick="document.getElementById('reset-filters-btn').click();">
+          Clear All Filters
+        </button>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="container footer-bottom" style="border: none; padding-top: 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+        <div>&copy; 2026 Road Hazard Reporting &amp; Civic Tracker &bull; Public Infrastructure Safety Portal</div>
+        <div><span style="color: #cbd5e1;"><strong style="color: #fbbf24;">Emergency Assistance:</strong> Dial <strong>333</strong> (Citizen Services) &bull; <strong>999</strong> (Accidents &amp; Emergency)</span></div>
+      </div>
+    </footer>
+
+    <script src="/js/supabase.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/reports.js"></script>
+  </body>
+</html>

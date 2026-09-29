@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Reports - Road Hazard Reporting & Tracking System</title>
+    
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/css/dashboard.css" />
+    <link rel="stylesheet" href="/css/responsive.css" />
+
+    <!-- Immediate Auth Guard: Prevents flash of unauthorized reports content -->
+    <style id="page-auth-shield">
+      html, body { visibility: hidden !important; opacity: 0 !important; }
+    </style>
+    <script>
+      (function() {
+        try {
+          var raw = localStorage.getItem('RH_CURRENT_USER');
+          if (!raw) {
+            window.location.replace('/login.html?redirect=' + encodeURIComponent(window.location.pathname + window.location.search));
+            return;
+          }
+        } catch (e) {
+          window.location.replace('/login.html');
+          return;
+        }
+        function revealPage() {
+          var shield = document.getElementById('page-auth-shield');
+          if (shield) shield.remove();
+          document.documentElement.style.visibility = 'visible';
+          if (document.body) {
+            document.body.style.visibility = 'visible';
+            document.body.style.opacity = '1';
+          }
+        }
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', revealPage);
+        } else {
+          revealPage();
+        }
+      })();
+    </script>
+
+    <script src="/js/theme.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  </head>
+  <body>
+    <!-- Navigation -->
+    <header class="navbar">
+      <div class="container nav-container">
+        <a href="/index.html" class="brand-logo">
+          <div class="brand-icon">⚠️</div>
+          <div>RoadHazard<span style="color: var(--color-accent);">Tracker</span></div>
+        </a>
+
+        <button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+
+        <nav class="nav-menu">
+          <a href="/dashboard.html" class="nav-link">Dashboard</a>
+          <a href="/reports.html" class="nav-link">All Reports</a>
+          <a href="/report.html" class="nav-link">Report Hazard</a>
+          <a href="/my-reports.html" class="nav-link active">My Reports</a>
+        </nav>
+
+        <div class="nav-actions" id="nav-auth-container">
+          <!-- Populated by auth.js -->
+        </div>
+      </div>
+    </header>
+
+    <!-- Page Header -->
+    <section class="page-header">
+      <div class="container page-header-content">
+        <div>
+          <h1 class="page-title">My Hazard Submissions</h1>
+          <p class="page-subtitle">Track the resolution pipeline of hazards you reported to civic authorities.</p>
+        </div>
+        <a href="/report.html" class="btn btn-accent">
+          ⚠️ Report Another Hazard
+        </a>
+      </div>
+    </section>
+
+    <!-- Main Content -->
+    <main class="container" style="padding-bottom: 5rem;">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Submitted Reports</h2>
+            <div id="my-reports-count" class="card-subtitle">Loading your records...</div>
+          </div>
+          <div style="font-size: 0.8rem; color: var(--text-muted);">
+            ℹ️ You can edit or delete reports while they remain in <strong>"Reported"</strong> status.
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Report ID</th>
+                <th>Hazard Category</th>
+                <th>Location</th>
+                <th>Severity</th>
+                <th>Status</th>
+                <th>Assigned / Suggested Dept</th>
+                <th>Reported On</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="my-reports-body">
+              <tr>
+                <td colspan="8" style="text-align: center; padding: 2.5rem;">Loading your reports...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div id="my-reports-empty" class="empty-state" style="display: none; border: none;">
+          <div class="empty-icon">📝</div>
+          <h3 class="empty-title">You haven't submitted any hazard reports yet</h3>
+          <p class="empty-desc">When you report road damage, potholes, or open manholes, they will appear here with live resolution status.</p>
+          <a href="/report.html" class="btn btn-accent btn-lg">Submit Your First Hazard Report</a>
+        </div>
+      </div>
+    </main>
+
+    <!-- Edit Report Modal -->
+    <div class="modal-backdrop" id="edit-report-modal">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3 style="font-size: 1.15rem; font-weight: 700;">Edit Hazard Report</h3>
+          <button type="button" id="close-edit-modal" style="background:none; border:none; font-size:1.25rem; cursor:pointer;">&times;</button>
+        </div>
+        <form id="edit-report-form">
+          <div class="modal-body">
+            <input type="hidden" id="edit-report-id" />
+
+            <div class="form-group">
+              <label for="edit-road-name" class="form-label">Road Name / Street</label>
+              <input type="text" id="edit-road-name" class="form-control" required />
+            </div>
+
+            <div class="form-group">
+              <label for="edit-landmark" class="form-label">Nearby Landmark</label>
+              <input type="text" id="edit-landmark" class="form-control" />
+            </div>
+
+            <div class="form-group">
+              <label for="edit-description" class="form-label">Problem Description</label>
+              <textarea id="edit-description" class="form-textarea" required></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" id="cancel-edit-btn" class="btn btn-outline">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="container footer-bottom" style="border: none; padding-top: 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+        <div>&copy; 2026 Road Hazard Reporting &amp; Civic Tracker &bull; Public Infrastructure Safety Portal</div>
+        <div><span style="color: #cbd5e1;"><strong style="color: #fbbf24;">Emergency Assistance:</strong> Dial <strong>333</strong> (Citizen Services) &bull; <strong>999</strong> (Accidents &amp; Emergency)</span></div>
+      </div>
+    </footer>
+
+    <script src="/js/supabase.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/my-reports.js"></script>
+  </body>
+</html>

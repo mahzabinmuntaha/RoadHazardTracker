@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Manage Reports - Road Hazard Admin</title>
+    
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/css/dashboard.css" />
+    <link rel="stylesheet" href="/css/responsive.css" />
+
+    <!-- Strict Head-Level Admin Guard: Completely prevents flash of unauthorized admin content -->
+    <style id="admin-auth-shield">
+      html, body { visibility: hidden !important; opacity: 0 !important; background-color: #0f172a !important; }
+    </style>
+    <script>
+      (function() {
+        try {
+          var raw = localStorage.getItem('RH_CURRENT_USER');
+          var user = raw ? JSON.parse(raw) : null;
+          if (!user || user.role !== 'admin') {
+            var target = encodeURIComponent(window.location.pathname + window.location.search);
+            if (!user) {
+              window.location.replace('/login.html?admin=true&redirect=' + target);
+            } else {
+              window.location.replace('/dashboard.html?denied=admin');
+            }
+            return;
+          }
+        } catch (e) {
+          window.location.replace('/login.html?admin=true');
+          return;
+        }
+        function revealAdminPage() {
+          var shield = document.getElementById('admin-auth-shield');
+          if (shield) shield.remove();
+          document.documentElement.style.visibility = 'visible';
+          if (document.body) {
+            document.body.style.visibility = 'visible';
+            document.body.style.opacity = '1';
+            document.body.style.backgroundColor = '';
+          }
+        }
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', revealAdminPage);
+        } else {
+          revealAdminPage();
+        }
+      })();
+    </script>
+
+    <script src="/js/theme.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  </head>
+  <body>
+    <!-- Navigation -->
+    <header class="navbar">
+      <div class="container nav-container">
+        <a href="/index.html" class="brand-logo">
+          <div class="brand-icon">🛡️</div>
+          <div>RoadHazard<span style="color: var(--color-accent);">Admin</span></div>
+          <span class="brand-badge" style="background: #fee2e2; color: #b91c1c; border-color: #fca5a5;">ADMIN</span>
+        </a>
+
+        <button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+
+        <nav class="nav-menu">
+          <a href="/admin/dashboard.html" class="nav-link">Admin Dashboard</a>
+          <a href="/admin/reports.html" class="nav-link active">Manage Reports</a>
+          <a href="/admin/departments.html" class="nav-link">Departments & Mappings</a>
+          <a href="/reports.html" class="nav-link">Public Registry</a>
+        </nav>
+
+        <div class="nav-actions" id="nav-auth-container">
+          <!-- Populated by auth.js -->
+        </div>
+      </div>
+    </header>
+
+    <!-- Page Header -->
+    <section class="page-header">
+      <div class="container page-header-content">
+        <div>
+          <h1 class="page-title">Hazard Report Verification & Assignment</h1>
+          <p class="page-subtitle">Verify citizen claims, confirm responsible civic departments, and update lifecycle progression.</p>
+        </div>
+        <div style="display: flex; gap: 0.5rem;" id="admin-reports-count">
+          <!-- Count injected here -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Content -->
+    <main class="container" style="padding-bottom: 5rem;">
+      <!-- Search & Filters -->
+      <section class="toolbar">
+        <div class="toolbar-search">
+          <span class="toolbar-search-icon">🔍</span>
+          <input 
+            type="text" 
+            id="admin-search" 
+            class="form-control" 
+            placeholder="Filter by road, area, landmark, or hazard description..." 
+          />
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div>
+            <label class="form-label" style="font-size: 0.775rem;">Lifecycle Status</label>
+            <select id="admin-filter-status" class="form-select">
+              <option value="all">All Statuses</option>
+              <option value="Reported">Reported (Pending Review)</option>
+              <option value="Verified">Verified</option>
+              <option value="Assigned">Assigned</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Resolved">Resolved</option>
+              <option value="Rejected">Rejected</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="form-label" style="font-size: 0.775rem;">Area / Region</label>
+            <select id="admin-filter-area" class="form-select">
+              <option value="all">All Areas</option>
+              <option value="Mirpur (DNCC)">Mirpur (DNCC)</option>
+              <option value="Dhanmondi (DSCC)">Dhanmondi (DSCC)</option>
+              <option value="Uttara (DNCC)">Uttara (DNCC)</option>
+              <option value="Gulshan & Banani (DNCC)">Gulshan & Banani (DNCC)</option>
+              <option value="Old Dhaka (DSCC)">Old Dhaka (DSCC)</option>
+              <option value="Mohammadpur (DNCC)">Mohammadpur (DNCC)</option>
+              <option value="Motijheel (DSCC)">Motijheel (DSCC)</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- Reports Table -->
+      <section class="card" style="padding: 0; overflow: hidden;">
+        <div class="table-responsive" style="border: none;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Report ID</th>
+                <th>Hazard & Observation</th>
+                <th>Location</th>
+                <th>Reported By (Admin View)</th>
+                <th>Severity</th>
+                <th>Status</th>
+                <th>Department</th>
+                <th>Submitted</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="admin-reports-table-body">
+              <tr>
+                <td colspan="9" style="text-align: center; padding: 2.5rem;">Loading reports...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <!-- Admin Manage / Assignment Modal -->
+    <div class="modal-backdrop" id="admin-manage-modal">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div>
+            <h3 style="font-size: 1.15rem; font-weight: 700;">Triage & Assign Hazard Report</h3>
+            <div id="modal-suggested-display" style="font-size: 0.8rem; color: var(--color-primary); font-weight: 600; margin-top: 2px;">
+              Auto-Suggested: ...
+            </div>
+          </div>
+          <button type="button" id="close-manage-modal" style="background:none; border:none; font-size:1.25rem; cursor:pointer;">&times;</button>
+        </div>
+
+        <form id="admin-manage-form">
+          <div class="modal-body">
+            <input type="hidden" id="modal-report-id" />
+
+            <!-- Reporter Info Box (Admin Exclusive) -->
+            <div id="modal-reporter-box" style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius-md); padding: 0.75rem 1rem; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
+              <div>
+                <span style="font-size: 0.725rem; font-weight: 700; color: #1e40af; text-transform: uppercase;">👤 Citizen Reporter</span>
+                <div id="modal-reporter-name" style="font-weight: 600; color: var(--text-main); font-size: 0.9rem;">...</div>
+              </div>
+              <span class="badge badge-sev-low" style="font-size: 0.7rem;">Admin Confidential View</span>
+            </div>
+
+            <!-- Status Choice -->
+            <div class="form-group">
+              <label for="modal-status-select" class="form-label">Update Status</label>
+              <select id="modal-status-select" class="form-select" required>
+                <option value="Reported">1. Reported (New)</option>
+                <option value="Verified">2. Verified (Confirmed Authentic)</option>
+                <option value="Assigned">3. Assigned (Routed to Authority)</option>
+                <option value="In Progress">4. In Progress (Repairs Active)</option>
+                <option value="Resolved">5. Resolved (Fixed & Inspected)</option>
+                <option value="Rejected">❌ Rejected (Duplicate or Out of Scope)</option>
+              </select>
+            </div>
+
+            <!-- Department Assignment -->
+            <div class="form-group">
+              <label for="modal-dept-select" class="form-label">
+                <span>Assign Responsible Authority</span>
+                <span class="optional">(Verified by Admin)</span>
+              </label>
+              <select id="modal-dept-select" class="form-select">
+                <!-- Dynamically populated with departments -->
+              </select>
+            </div>
+
+            <!-- Admin Note -->
+            <div class="form-group">
+              <label for="modal-note-input" class="form-label">
+                <span>Administrative Note</span>
+                <span class="optional">(Recorded into audit history)</span>
+              </label>
+              <textarea 
+                id="modal-note-input" 
+                class="form-textarea" 
+                placeholder="e.g. Dispatched asphalt patch crew #4; or: Verified camera recording."
+              ></textarea>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" id="cancel-manage-modal" class="btn btn-outline">Cancel</button>
+            <button type="submit" class="btn btn-primary">Apply Updates</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="container footer-bottom" style="border: none; padding-top: 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+        <div>&copy; 2026 Road Hazard Reporting &amp; Civic Tracker &bull; Municipal Authority Admin Console</div>
+        <div><span style="color: #cbd5e1;"><strong style="color: #fbbf24;">Emergency Assistance:</strong> Dial <strong>333</strong> (Citizen Services) &bull; <strong>999</strong> (Accidents &amp; Emergency)</span></div>
+      </div>
+    </footer>
+
+    <script src="/js/supabase.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/admin.js"></script>
+  </body>
+</html>

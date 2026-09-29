@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Dashboard &amp; Monitoring Console - Road Hazard System</title>
+    
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/css/dashboard.css" />
+    <link rel="stylesheet" href="/css/responsive.css" />
+
+    <!-- Strict Head-Level Admin Guard: Completely prevents flash of unauthorized admin content -->
+    <style id="admin-auth-shield">
+      html, body { visibility: hidden !important; opacity: 0 !important; background-color: #0f172a !important; }
+    </style>
+    <script>
+      (function() {
+        try {
+          var raw = localStorage.getItem('RH_CURRENT_USER');
+          var user = raw ? JSON.parse(raw) : null;
+          if (!user || user.role !== 'admin') {
+            var target = encodeURIComponent(window.location.pathname + window.location.search);
+            if (!user) {
+              window.location.replace('/login.html?admin=true&redirect=' + target);
+            } else {
+              window.location.replace('/dashboard.html?denied=admin');
+            }
+            return;
+          }
+        } catch (e) {
+          window.location.replace('/login.html?admin=true');
+          return;
+        }
+        function revealAdminPage() {
+          var shield = document.getElementById('admin-auth-shield');
+          if (shield) shield.remove();
+          document.documentElement.style.visibility = 'visible';
+          if (document.body) {
+            document.body.style.visibility = 'visible';
+            document.body.style.opacity = '1';
+            document.body.style.backgroundColor = '';
+          }
+        }
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', revealAdminPage);
+        } else {
+          revealAdminPage();
+        }
+      })();
+    </script>
+
+    <script src="/js/theme.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  </head>
+  <body>
+    <!-- Navigation -->
+    <header class="navbar">
+      <div class="container nav-container">
+        <a href="/index.html" class="brand-logo">
+          <div class="brand-icon">🛡️</div>
+          <div>RoadHazard<span style="color: var(--color-accent);">Admin</span></div>
+          <span class="brand-badge" style="background: #fee2e2; color: #b91c1c; border-color: #fca5a5;">ADMIN</span>
+        </a>
+
+        <button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+
+        <nav class="nav-menu">
+          <a href="/admin/dashboard.html" class="nav-link active">Admin Console</a>
+          <a href="/admin/reports.html" class="nav-link">Manage Reports</a>
+          <a href="/admin/departments.html" class="nav-link">Departments &amp; Mappings</a>
+          <a href="/reports.html" class="nav-link">Public Registry</a>
+        </nav>
+
+        <div class="nav-actions" id="nav-auth-container">
+          <!-- Populated by auth.js -->
+        </div>
+      </div>
+    </header>
+
+    <!-- Page Header -->
+    <section class="page-header">
+      <div class="container page-header-content">
+        <div>
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem;">
+            <span class="badge badge-status-resolved">Full Administrative Access</span>
+            <span class="badge badge-sev-med" id="active-theme-pill">Theme: Emerald Teal</span>
+          </div>
+          <h1 class="page-title">Civic Command &amp; Monitoring Console</h1>
+          <p class="page-subtitle">Monitor city-wide hazard reports, triage incidents, oversee citizens, and control system themes.</p>
+        </div>
+        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+          <a href="#theme-manager-section" class="btn btn-accent btn-sm">
+            🎨 Color Theme Manager
+          </a>
+          <a href="/admin/reports.html" class="btn btn-primary btn-sm">
+            📋 Triage Reports
+          </a>
+          <button id="export-backup-btn" class="btn btn-outline btn-sm">
+            📥 Export Backup JSON
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Content -->
+    <main class="container" style="padding-bottom: 5rem;">
+      <!-- Seven Status KPI Metrics -->
+      <section class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); margin-bottom: 2rem;">
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-blue">📊</div>
+          <div class="stat-info">
+            <div class="stat-value" id="stat-total">0</div>
+            <div class="stat-label">Total Reports</div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-slate">📝</div>
+          <div class="stat-info">
+            <div class="stat-value" id="stat-reported">0</div>
+            <div class="stat-label">Reported</div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-sky">🔍</div>
+          <div class="stat-info">
+            <div class="stat-value" id="stat-verified">0</div>
+            <div class="stat-label">Verified</div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-indigo">🏢</div>
+          <div class="stat-info">
+            <div class="stat-value" id="stat-assigned">0</div>
+            <div class="stat-label">Assigned</div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-amber">🛠️</div>
+          <div class="stat-info">
+            <div class="stat-value" id="stat-in-progress">0</div>
+            <div class="stat-label">In Progress</div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-green">✅</div>
+          <div class="stat-info">
+            <div class="stat-value" id="stat-resolved">0</div>
+            <div class="stat-label">Resolved</div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-red">❌</div>
+          <div class="stat-info">
+            <div class="stat-value" id="stat-rejected">0</div>
+            <div class="stat-label">Rejected</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 🎨 Admin Theme & Color Customizer Card -->
+      <section id="theme-manager-section" class="card" style="margin-bottom: 2rem; border-top: 4px solid var(--color-primary); background: linear-gradient(to bottom, #ffffff 0%, #fafafa 100%);">
+        <div class="card-header" style="flex-wrap: wrap; gap: 1rem;">
+          <div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+              <h2 class="card-title" style="display: flex; align-items: center; gap: 0.5rem;">
+                <span>🎨</span> Portal Color Theme &amp; Branding Engine
+              </h2>
+              <span class="badge badge-sev-high" style="font-size: 0.7rem;">ADMIN EXCLUSIVE</span>
+            </div>
+            <p class="card-subtitle">
+              Select an official civic palette or pick custom hex colors. Changes save permanently and apply across all pages, public registry, and citizen views.
+            </p>
+          </div>
+          <button id="theme-reset-btn" class="btn btn-outline btn-sm">
+            ↺ Reset to Default Theme
+          </button>
+        </div>
+
+        <!-- Presets Grid -->
+        <div style="margin-top: 1rem;">
+          <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.75rem;">
+            Official Civic Color Presets (Click to Apply Instantly):
+          </label>
+          <div id="theme-presets-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+            <!-- Generated dynamically by admin.js -->
+          </div>
+        </div>
+
+        <!-- Custom Color Picker Box -->
+        <div style="background: var(--bg-body); border-radius: var(--radius-md); padding: 1.25rem; border: 1px solid var(--border-color); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem;">
+          <div>
+            <h4 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 0.25rem; color: var(--text-main);">
+              Custom Hex Color Builder
+            </h4>
+            <p style="font-size: 0.825rem; color: var(--text-muted); margin: 0;">
+              Pick precise primary brand and accent highlight colors matching your municipal identity.
+            </p>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <label for="custom-primary" style="font-size: 0.8rem; font-weight: 600;">Primary Brand:</label>
+              <input type="color" id="custom-primary" value="#0f766e" style="width: 44px; height: 36px; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; padding: 2px; background: white;" />
+              <span id="custom-primary-hex" style="font-family: monospace; font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">#0f766e</span>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <label for="custom-accent" style="font-size: 0.8rem; font-weight: 600;">Accent Alert:</label>
+              <input type="color" id="custom-accent" value="#f59e0b" style="width: 44px; height: 36px; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; padding: 2px; background: white;" />
+              <span id="custom-accent-hex" style="font-family: monospace; font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">#f59e0b</span>
+            </div>
+
+            <button id="apply-custom-theme-btn" class="btn btn-primary btn-sm">
+              ✨ Apply Custom Palette
+            </button>
+          </div>
+        </div>
+
+        <!-- Live Theme Preview Strip -->
+        <div style="margin-top: 1.25rem; padding: 1rem; border-radius: var(--radius-md); background: #ffffff; border: 1px dashed var(--border-color); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Live Preview:</span>
+            <button class="btn btn-primary btn-sm">Primary Action</button>
+            <button class="btn btn-accent btn-sm">Alert / Attention</button>
+            <button class="btn btn-outline btn-sm">Outline Button</button>
+            <span class="badge badge-status-progress">In Progress</span>
+            <span class="badge badge-sev-high">High Alert</span>
+          </div>
+          <span style="font-size: 0.8rem; color: var(--text-muted);" id="theme-active-label">Active: Emerald Teal &amp; Amber (Default)</span>
+        </div>
+      </section>
+
+      <!-- Admin Control Center Tabs -->
+      <div style="display: flex; gap: 0.5rem; border-bottom: 2px solid var(--border-color); margin-bottom: 1.5rem; overflow-x: auto; padding-bottom: 0.25rem;">
+        <button class="admin-tab-btn active" data-target="tab-reports" style="padding: 0.6rem 1.2rem; font-weight: 700; font-size: 0.9rem; border: none; background: transparent; cursor: pointer; border-radius: var(--radius-md) var(--radius-md) 0 0; color: var(--color-primary); border-bottom: 3px solid var(--color-primary);">
+          📋 Submissions Triage (<span id="tab-count-reports">0</span>)
+        </button>
+        <button class="admin-tab-btn" data-target="tab-users" style="padding: 0.6rem 1.2rem; font-weight: 600; font-size: 0.9rem; border: none; background: transparent; cursor: pointer; border-radius: var(--radius-md) var(--radius-md) 0 0; color: var(--text-muted);">
+          👥 Citizen &amp; User Directory (<span id="tab-count-users">0</span>)
+        </button>
+        <button class="admin-tab-btn" data-target="tab-activity" style="padding: 0.6rem 1.2rem; font-weight: 600; font-size: 0.9rem; border: none; background: transparent; cursor: pointer; border-radius: var(--radius-md) var(--radius-md) 0 0; color: var(--text-muted);">
+          ⚡ Live Audit &amp; Activity Log
+        </button>
+        <button class="admin-tab-btn" data-target="tab-system" style="padding: 0.6rem 1.2rem; font-weight: 600; font-size: 0.9rem; border: none; background: transparent; cursor: pointer; border-radius: var(--radius-md) var(--radius-md) 0 0; color: var(--text-muted);">
+          ⚙️ System Health &amp; Tools
+        </button>
+      </div>
+
+      <!-- TAB 1: Recent Reports Requiring Action -->
+      <section id="tab-reports" class="admin-tab-content card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Live Hazard Reports Stream</h2>
+            <p class="card-subtitle">Click Manage to verify, assign responsible authority, or change investigation status</p>
+          </div>
+          <div style="display: flex; gap: 0.5rem;">
+            <a href="/admin/reports.html" class="btn btn-outline-primary btn-sm">
+              Full Triage Table &rarr;
+            </a>
+            <a href="/report.html" class="btn btn-accent btn-sm">
+              + Submit Test Report
+            </a>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Hazard Category</th>
+                <th>Area &amp; Road</th>
+                <th>Severity</th>
+                <th>Status</th>
+                <th>Assigned Dept</th>
+                <th>Submitted</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="admin-recent-body">
+              <tr>
+                <td colspan="8" style="text-align: center; padding: 2rem;">Loading latest reports...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- TAB 2: User Directory & Access Control -->
+      <section id="tab-users" class="admin-tab-content card" style="display: none;">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Citizen &amp; Administrator Accounts</h2>
+            <p class="card-subtitle">Inspect registered users, activity metrics, and grant or revoke administrator privileges</p>
+          </div>
+          <span class="badge badge-status-verified" id="users-badge-count">3 Users Registered</span>
+        </div>
+
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Current Role</th>
+                <th>Reports Filed</th>
+                <th>Registered On</th>
+                <th>Role Control</th>
+              </tr>
+            </thead>
+            <tbody id="admin-users-table-body">
+              <tr>
+                <td colspan="6" style="text-align: center; padding: 2rem;">Loading user directory...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- TAB 3: Live Audit & Activity Stream -->
+      <section id="tab-activity" class="admin-tab-content card" style="display: none;">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">System Audit &amp; Event Log</h2>
+            <p class="card-subtitle">Immutable timeline of hazard submissions, department assignments, and administrator notes</p>
+          </div>
+          <button id="refresh-activity-btn" class="btn btn-outline btn-sm">↻ Refresh Stream</button>
+        </div>
+
+        <div id="admin-activity-stream" style="display: flex; flex-direction: column; gap: 0.75rem; max-height: 480px; overflow-y: auto; padding: 0.5rem 0;">
+          <div style="text-align: center; padding: 2rem; color: var(--text-muted);">Loading system activity...</div>
+        </div>
+      </section>
+
+      <!-- TAB 4: System Health & Maintenance Tools -->
+      <section id="tab-system" class="admin-tab-content card" style="display: none;">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">System Architecture &amp; Maintenance</h2>
+            <p class="card-subtitle">Database connection status, automated routing engine, and data lifecycle management</p>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 1rem;">
+          <div class="card" style="border-left: 4px solid var(--color-primary);">
+            <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem;">Department Auto-Routing Engine</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+              Area + Hazard rule matrix automatically recommends departments (DNCC, DSCC, Dhaka WASA, DMP Traffic, DESCO).
+            </p>
+            <a href="/admin/departments.html" class="btn btn-outline-primary btn-sm">
+              Manage Routing Matrix &rarr;
+            </a>
+          </div>
+
+          <div class="card" style="border-left: 4px solid var(--status-resolved);">
+            <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem;">Data Export &amp; Backup</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+              Download a complete JSON snapshot containing all reports, activity logs, departments, and active theme configurations.
+            </p>
+            <button id="sys-export-btn" class="btn btn-primary btn-sm">
+              📥 Download Backup JSON
+            </button>
+          </div>
+
+          <div class="card" style="border-left: 4px solid var(--severity-high);">
+            <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem;">Hazard Data Reset</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+              Purge all hazard reports and history back to a clean 0 state for fresh demonstration or deployment.
+            </p>
+            <button id="sys-clear-hazards-btn" class="btn btn-outline btn-sm" style="color: var(--severity-high); border-color: #fca5a5;">
+              ⚠️ Clear All Hazard Reports (Reset to 0)
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="container footer-bottom" style="border: none; padding-top: 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+        <div>&copy; 2026 Road Hazard Reporting &amp; Civic Tracker &bull; Municipal Authority Admin Console</div>
+        <div><span style="color: #cbd5e1;"><strong style="color: #fbbf24;">Emergency Assistance:</strong> Dial <strong>333</strong> (Citizen Services) &bull; <strong>999</strong> (Accidents &amp; Emergency)</span></div>
+      </div>
+    </footer>
+
+    <script src="/js/supabase.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/admin.js"></script>
+  </body>
+</html>

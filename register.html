@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Register - Road Hazard Reporting & Tracking System</title>
+    
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/css/auth.css" />
+    <link rel="stylesheet" href="/css/responsive.css" />
+
+    <script src="/js/theme.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  </head>
+  <body>
+    <!-- Navigation -->
+    <header class="navbar">
+      <div class="container nav-container">
+        <a href="/index.html" class="brand-logo">
+          <div class="brand-icon">⚠️</div>
+          <div>RoadHazard<span style="color: var(--color-accent);">Tracker</span></div>
+        </a>
+        <div class="nav-actions">
+          <a href="/login.html" class="nav-link">Already have an account? Sign In</a>
+        </div>
+      </div>
+    </header>
+
+    <!-- Registration Content -->
+    <main class="auth-wrapper">
+      <div class="auth-card">
+        <div class="auth-header">
+          <div class="auth-icon">📝</div>
+          <h1 class="auth-title">Citizen Registration</h1>
+          <p class="auth-subtitle">Create your community account to report hazards and track repairs</p>
+        </div>
+
+        <!-- Notification Banner when redirected from Report Hazard -->
+        <div id="auth-redirect-notice" style="display: none; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: var(--radius-md); padding: 0.85rem 1rem; margin-bottom: 1.25rem; font-size: 0.85rem; color: #166534; display: flex; align-items: flex-start; gap: 0.5rem; line-height: 1.45;">
+          <span style="font-size: 1.1rem; flex-shrink: 0;">🛡️</span>
+          <div>
+            <strong>Citizen Registration Required:</strong> জনসাধারণের নিরাপত্তার স্বার্থে সিটিজেন অ্যাকাউন্ট তৈরি করার পর আপনি সরাসরি রাস্তায় রিপোর্ট সাবমিট করতে পারবেন।
+          </div>
+        </div>
+
+        <form id="register-form" class="auth-form">
+          <div class="form-group">
+            <label for="reg-name" class="form-label">Full Name</label>
+            <input 
+              type="text" 
+              id="reg-name" 
+              class="form-control" 
+              placeholder="e.g. John Doe" 
+              required 
+              autocomplete="name"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="reg-email" class="form-label">Email Address</label>
+            <input 
+              type="email" 
+              id="reg-email" 
+              class="form-control" 
+              placeholder="e.g. citizen@example.com" 
+              required 
+              autocomplete="email"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="reg-password" class="form-label">Password</label>
+            <input 
+              type="password" 
+              id="reg-password" 
+              class="form-control" 
+              placeholder="At least 4 characters" 
+              minlength="4"
+              required 
+              autocomplete="new-password"
+            />
+            <span class="form-hint">At least 4 characters</span>
+          </div>
+
+          <div class="form-group">
+            <label for="reg-confirm-password" class="form-label">Confirm Password</label>
+            <input 
+              type="password" 
+              id="reg-confirm-password" 
+              class="form-control" 
+              placeholder="Re-enter your password" 
+              minlength="4"
+              required 
+              autocomplete="new-password"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="reg-role" class="form-label">Account Type</label>
+            <select id="reg-role" class="form-select">
+              <option value="user" selected>Citizen / Resident</option>
+              <option value="admin">Municipal Authority / Administrator</option>
+            </select>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-lg" style="width: 100%; margin-top: 0.5rem;" id="reg-submit-btn">
+            Create Account &rarr;
+          </button>
+        </form>
+
+        <div class="auth-footer">
+          Already registered? <a href="/login.html" id="login-redirect-link">Log In to your account</a>
+        </div>
+      </div>
+    </main>
+
+    <script src="/js/supabase.js"></script>
+    <script src="/js/auth.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const form = document.getElementById('register-form');
+        const nameInput = document.getElementById('reg-name');
+        const emailInput = document.getElementById('reg-email');
+        const passInput = document.getElementById('reg-password');
+        const confirmPassInput = document.getElementById('reg-confirm-password');
+        const roleSelect = document.getElementById('reg-role');
+        const submitBtn = document.getElementById('reg-submit-btn');
+        const redirectNotice = document.getElementById('auth-redirect-notice');
+        const loginLink = document.getElementById('login-redirect-link');
+
+        // Check if redirected from a protected page like /report.html
+        const urlParams = new URLSearchParams(window.location.search);
+        const redirectParam = urlParams.get('redirect');
+
+        if (redirectParam) {
+          if (redirectNotice) {
+            redirectNotice.style.display = 'flex';
+          }
+          if (loginLink) {
+            loginLink.href = `/login.html?redirect=${encodeURIComponent(redirectParam)}`;
+          }
+        }
+
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+
+          const fullName = nameInput.value.trim();
+          const email = emailInput.value.trim();
+          const password = passInput.value.trim();
+          const confirmPassword = confirmPassInput.value.trim();
+          const role = roleSelect.value;
+
+          // Validation
+          if (!fullName || !email || !password) {
+            showToast('Please fill in all required fields.', 'error');
+            return;
+          }
+
+          if (password.length < 4) {
+            showToast('Password must be at least 4 characters long.', 'error');
+            return;
+          }
+
+          if (password !== confirmPassword) {
+            showToast('Passwords do not match. Please verify.', 'error');
+            confirmPassInput.focus();
+            return;
+          }
+
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Creating Account...';
+
+          try {
+            const user = await window.db.auth.signUp(email, password, fullName, role);
+            showToast('Registration successful! Redirecting...', 'success');
+
+            setTimeout(() => {
+              if (redirectParam && redirectParam.startsWith('/')) {
+                window.location.href = redirectParam;
+              } else if (role === 'admin') {
+                window.location.href = '/admin/dashboard.html';
+              } else {
+                window.location.href = '/dashboard.html';
+              }
+            }, 500);
+          } catch (err) {
+            console.error('Registration error:', err);
+            showToast(err.message || 'Registration failed.', 'error');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Create Account →';
+          }
+        });
+      });
+    </script>
+  </body>
+</html>

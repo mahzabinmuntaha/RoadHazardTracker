@@ -1,0 +1,6 @@
+{
+  "name": "Road Hazard Reporting & Tracking System",
+  "description": "A community-based road and infrastructure hazard reporting, verification, and tracking web application with department routing and status workflow.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

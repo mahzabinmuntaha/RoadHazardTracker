@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Report Details & Tracking - Road Hazard System</title>
+    
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/css/dashboard.css" />
+    <link rel="stylesheet" href="/css/responsive.css" />
+
+    <script src="/js/theme.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  </head>
+  <body>
+    <!-- Navigation -->
+    <header class="navbar">
+      <div class="container nav-container">
+        <a href="/index.html" class="brand-logo">
+          <div class="brand-icon">⚠️</div>
+          <div>RoadHazard<span style="color: var(--color-accent);">Tracker</span></div>
+        </a>
+
+        <button class="nav-toggle" aria-label="Toggle navigation">☰</button>
+
+        <nav class="nav-menu">
+          <a href="/dashboard.html" class="nav-link">Dashboard</a>
+          <a href="/reports.html" class="nav-link">All Reports</a>
+          <a href="/report.html" class="nav-link">Report Hazard</a>
+          <a href="/my-reports.html" class="nav-link">My Reports</a>
+        </nav>
+
+        <div class="nav-actions" id="nav-auth-container">
+          <!-- Populated by auth.js -->
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="container" style="padding-top: 2rem; padding-bottom: 5rem;" id="report-details-container">
+      <!-- Breadcrumb & Back -->
+      <div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <a href="/reports.html" class="btn btn-outline btn-sm">
+          &larr; Back to All Reports
+        </a>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <span style="font-size: 0.85rem; color: var(--text-muted);">Report Identifier:</span>
+          <code id="detail-id" style="background: #e2e8f0; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 0.85rem;">#...</code>
+        </div>
+      </div>
+
+      <!-- 1. Visual Status Tracker -->
+      <section class="status-tracker-container">
+        <div class="status-tracker-title">
+          <span>Resolution Lifecycle Pipeline</span>
+          <span id="detail-status-badge"></span>
+        </div>
+
+        <div class="status-tracker-steps" id="visual-tracker-steps">
+          <!-- Populated dynamically: Reported -> Verified -> Assigned -> In Progress -> Resolved -->
+        </div>
+      </section>
+
+      <!-- 2. Two-Column Layout: Details + Audit History -->
+      <div style="display: grid; grid-template-columns: 1.3fr 0.9fr; gap: 1.75rem; align-items: start;">
+        <!-- Left Column: Hazard Information & Image -->
+        <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+          <!-- Core Info Card -->
+          <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+              <div>
+                <h1 style="font-size: 1.75rem; margin-bottom: 0.35rem;" id="detail-type">Loading...</h1>
+                <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted); font-size: 0.9rem;">
+                  <span>📍</span>
+                  <span id="detail-area" style="font-weight: 600;">Area</span> &bull; 
+                  <span id="detail-road">Road</span>
+                </div>
+              </div>
+              <div id="detail-severity-badge"></div>
+            </div>
+
+            <!-- Description -->
+            <div style="background-color: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem; margin-bottom: 1.5rem;">
+              <h4 style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.5rem;">
+                Detailed Hazard Observation
+              </h4>
+              <p id="detail-description" style="color: var(--text-main); font-size: 0.95rem; line-height: 1.6; white-space: pre-line;">
+                Loading description...
+              </p>
+            </div>
+
+            <!-- Meta Details Grid -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; font-size: 0.875rem;">
+              <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+                <span style="color: var(--text-muted); display: block; font-size: 0.775rem;">Nearby Landmark</span>
+                <strong id="detail-landmark">None</strong>
+              </div>
+              <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+                <span style="color: var(--text-muted); display: block; font-size: 0.775rem;">Auto-Suggested Department</span>
+                <strong id="detail-suggested-dept" style="color: var(--color-primary);">Calculating...</strong>
+              </div>
+              <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+                <span style="color: var(--text-muted); display: block; font-size: 0.775rem;">Assigned Responsible Authority</span>
+                <strong id="detail-assigned-dept" style="color: var(--status-resolved);">Pending Admin Assignment</strong>
+              </div>
+              <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+                <span style="color: var(--text-muted); display: block; font-size: 0.775rem;">Submitted Timestamp</span>
+                <span id="detail-created-at" style="color: var(--text-main); font-weight: 500;">...</span>
+              </div>
+              <div style="grid-column: 1 / -1; padding-top: 0.25rem;">
+                <span style="color: var(--text-muted); display: block; font-size: 0.775rem;">Last Status Modification</span>
+                <span id="detail-updated-at" style="color: var(--text-main); font-weight: 500;">...</span>
+              </div>
+
+              <!-- Citizen Identity / Reporter Privacy Protection (Only Admin can see who reported) -->
+              <div id="detail-reporter-wrapper" style="grid-column: 1 / -1; padding: 0.75rem 1rem; border-radius: var(--radius-md); background: #f8fafc; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.25rem;">
+                <div style="display: flex; align-items: center; gap: 0.65rem;">
+                  <span style="font-size: 1.25rem;" id="detail-reporter-icon">🔒</span>
+                  <div>
+                    <span style="color: var(--text-muted); display: block; font-size: 0.725rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em;">
+                      Report Submitter (Citizen Privacy)
+                    </span>
+                    <div id="detail-reporter-name" style="font-size: 0.9rem; font-weight: 600; color: var(--text-main);">
+                      🔒 Citizen Identity Confidential
+                    </div>
+                  </div>
+                </div>
+                <div id="detail-reporter-badge">
+                  <span style="font-size: 0.725rem; color: var(--text-muted); background: #e2e8f0; padding: 3px 8px; border-radius: 9999px;">
+                    Protected from Public
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Admin Note Callout (If exists) -->
+            <div id="admin-note-box" style="display: none; margin-top: 1.5rem; background-color: #fefce8; border: 1px solid #fef08a; border-radius: var(--radius-md); padding: 1rem;">
+              <div style="font-size: 0.8rem; font-weight: 700; color: #854d0e; text-transform: uppercase; margin-bottom: 0.25rem;">
+                🛡️ Administrator Note
+              </div>
+              <p id="detail-admin-note" style="font-size: 0.9rem; color: #713f12;"></p>
+            </div>
+          </div>
+
+          <!-- Photo Evidence Card -->
+          <div class="card" id="detail-image-box" style="display: none;">
+            <h3 style="font-size: 1.1rem; margin-bottom: 1rem;">Photographic Evidence</h3>
+            <div style="border-radius: var(--radius-md); overflow: hidden; max-height: 450px; background: #000; display: flex; align-items: center; justify-content: center;">
+              <img id="detail-image" src="" alt="Hazard Evidence" style="width: 100%; height: auto; object-fit: contain; max-height: 450px;" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: Status History & Admin Quick Actions -->
+        <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+          <!-- Admin Action Panel (Visible only when logged in as admin) -->
+          <div class="card" id="admin-quick-action-panel" style="display: none; border-color: #93c5fd; background: #f0f7ff;">
+            <h3 style="font-size: 1.15rem; color: var(--color-primary); margin-bottom: 0.35rem; display: flex; align-items: center; gap: 0.5rem;">
+              <span>🛡️</span> Admin Action Panel
+            </h3>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+              Verify hazard, assign responsible civic department, and update resolution lifecycle.
+            </p>
+
+            <div class="form-group">
+              <label for="admin-status-select" class="form-label">Update Status</label>
+              <select id="admin-status-select" class="form-select">
+                <option value="Reported">1. Reported</option>
+                <option value="Verified">2. Verified</option>
+                <option value="Assigned">3. Assigned</option>
+                <option value="In Progress">4. In Progress</option>
+                <option value="Resolved">5. Resolved</option>
+                <option value="Rejected">❌ Rejected (Invalid / Duplicate)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="admin-dept-select" class="form-label">Assign Responsible Department</label>
+              <select id="admin-dept-select" class="form-select">
+                <!-- Injected via report-details.js -->
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="admin-note-input" class="form-label">Administrative Action Note</label>
+              <textarea id="admin-note-input" class="form-textarea" placeholder="e.g. Field team dispatched, pothole repaired..." style="min-height: 70px;"></textarea>
+            </div>
+
+            <button type="button" id="admin-update-btn" class="btn btn-primary" style="width: 100%;">
+              Save Status & Assignment
+            </button>
+          </div>
+
+          <!-- Status History Audit Trail Card -->
+          <div class="card">
+            <h3 style="font-size: 1.15rem; margin-bottom: 0.25rem;">Status Audit History</h3>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">
+              Permanent record of lifecycle changes and department actions.
+            </p>
+
+            <div class="history-timeline" id="status-history-timeline">
+              <!-- Injected via report-details.js -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="container footer-bottom" style="border: none; padding-top: 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+        <div>&copy; 2026 Road Hazard Reporting &amp; Civic Tracker &bull; Public Infrastructure Safety Portal</div>
+        <div><span style="color: #cbd5e1;"><strong style="color: #fbbf24;">Emergency Assistance:</strong> Dial <strong>333</strong> (Citizen Services) &bull; <strong>999</strong> (Accidents &amp; Emergency)</span></div>
+      </div>
+    </footer>
+
+    <script src="/js/supabase.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/report-details.js"></script>
+  </body>
+</html>
